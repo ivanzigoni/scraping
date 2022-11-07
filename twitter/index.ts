@@ -1,5 +1,6 @@
 import puppeteer from 'puppeteer';
 import { credentials as c } from '../credentials';
+import fs from 'fs';
 
 async function main() {
   const browser = await puppeteer.launch();
@@ -37,9 +38,42 @@ async function main() {
   
   await page.click('[loginButton="true"]');
 
-  await page.waitForSelector('[aria-label="Home timeline"]')
+  await page.waitForSelector('article')
+  // await page.waitForSelector('[aria-label="Home timeline"]')
 
-  await page.screenshot({ path: `./screenshots/${new Date().toISOString()}.jpg`});
+  const tweets = await page.evaluate(() => {
+    // const tweets = [...document.querySelectorAll('div[data-testid="tweetText"]')]
+    // .map(div => ({ text: [...div.children][0].textContent }))
+
+    window.scrollBy(0, window.innerHeight)
+
+    const tweets = [...document.querySelectorAll('article div[data-testid="tweetText"] span')]
+      .reduce((acc: string[], element) => {
+        
+        if (element.textContent) acc.push(element.textContent)
+
+        return acc;
+      }, []);
+
+    const users = [...document.querySelectorAll('article div[data-testid="User-Names"] a span')]
+      .reduce((acc: string[], element) => {
+      
+      if (element.textContent && element.textContent.includes("@")) acc.push(element.textContent)
+
+      return acc;
+    }, []);
+
+    return users.map((user, i) => {
+      return {
+        username: user,
+        tweet: tweets[i]
+      }
+    });
+  })
+
+  fs.writeFileSync(`./twitter/report/${new Date().toISOString()}-report.json`, JSON.stringify(tweets));
+
+  await page.screenshot({ path: `./screenshots/${new Date().toISOString()}.jpg` });
 
 
   browser.close()
