@@ -37,7 +37,5 @@ import puppeteer from 'puppeteer';
     });
   });
 
-  console.log(links);
-
   await browser.close();
 })();
